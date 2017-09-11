@@ -5,11 +5,14 @@ import org.testng.annotations.BeforeSuite;
 import org.testng.annotations.Test;
 
 import com.jayway.restassured.path.json.JsonPath;
+import com.jayway.restassured.response.Response;
 
 import static com.jayway.restassured.RestAssured.*;
 import static org.hamcrest.Matchers.*;
 
 public class RestAssuredAuthenticationTest {
+	
+	Response responseJSON = null;
 
 	@BeforeSuite
 	public void requestToken(ITestContext context) {
@@ -32,32 +35,34 @@ public class RestAssuredAuthenticationTest {
 
 		System.out.println("Access token: " + context.getAttribute("accessToken"));
 	}
-	
-	@Test
-	public void checkUserInfoContainsUserId(ITestContext context) {
 
-		given().
-			contentType("application/json").
-			auth().
-			oauth2(context.getAttribute("accessToken").toString()).
-		when().
-			get("https://api.sandbox.paypal.com/v1/identity/openidconnect/userinfo/?schema=openid").
-		then().
-			assertThat().
-			body("",hasKey("user_id"));
+	@Test(priority=1)
+	public void checkUserInfoContainsUserId(ITestContext context) {
+		responseJSON = 
+				given().
+					contentType("application/json").auth().oauth2(context.getAttribute("accessToken").toString()).
+				when().
+					get("https://api.sandbox.paypal.com/v1/identity/openidconnect/userinfo/?schema=openid");
+
+		System.out.println(responseJSON.asString());
+
+		responseJSON.
+			then().
+				assertThat().body("", hasKey("user_id"));
 	}
 
-	@Test
+	@Test(priority=2)
 	public void checkNumberOfAssociatedPaymentsIsEqualToZero(ITestContext context) {
+		responseJSON = 
+				given().contentType("application/json").auth()
+					.oauth2(context.getAttribute("accessToken").toString()).
+				when().
+					get("https://api.sandbox.paypal.com/v1/payments/payment/");
 
-		given().
-			contentType("application/json").
-			auth().
-			oauth2(context.getAttribute("accessToken").toString()).
-		when().
-			get("https://api.sandbox.paypal.com/v1/payments/payment/").
-		then().
-			assertThat().
-			body("count", equalTo(0));
+		System.out.println(responseJSON.asString());
+
+		responseJSON.
+			then().
+				assertThat().body("count", equalTo(0));
 	}
 }
